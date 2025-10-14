@@ -1,29 +1,78 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Google Calendar API Quickstart</title>
+    <title>Google Calendar API Demo</title>
     <meta charset="utf-8" />
     <style>
-      #authorize_button, #signout_button { visibility: hidden; margin: 5px; }
-      pre { white-space: pre-wrap; }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      button {
+        margin: 5px;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      #eventForm {
+        display: none;
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+      input, textarea {
+        width: 100%;
+        padding: 6px;
+        margin: 5px 0;
+      }
+      pre { 
+        background: #f9f9f9; 
+        padding: 10px; 
+        border-radius: 8px; 
+      }
     </style>
   </head>
   <body>
-    <h2>Google Calendar API Quickstart</h2>
+    <h2>Google Calendar API Demo</h2>
 
     <button id="authorize_button">Authorize</button>
     <button id="signout_button">Sign Out</button>
+    <button id="show_form_button">Create Event</button>
+
+    <div id="eventForm">
+      <h3>Create a New Event</h3>
+      <label>Title:</label>
+      <input type="text" id="eventTitle" placeholder="Meeting with Team" />
+
+      <label>Description:</label>
+      <textarea id="eventDesc" placeholder="Discuss project updates"></textarea>
+
+      <label>Start Time:</label>
+      <input type="datetime-local" id="eventStart" />
+
+      <label>End Time:</label>
+      <input type="datetime-local" id="eventEnd" />
+
+      <button id="create_event_button">Add Event</button>
+    </div>
 
     <pre id="content"></pre>
 
-    <!-- Include config.js first -->
+    <!-- Your API keys -->
     <script src="config.js"></script>
 
     <script>
       const API_KEY = window.CONFIG.API_KEY;
       const CLIENT_ID = window.CONFIG.CLIENT_ID;
       const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-      const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+      const SCOPES = 'https://www.googleapis.com/auth/calendar';
 
       let tokenClient;
       let gapiInited = false;
@@ -31,12 +80,17 @@
 
       const authorizeButton = document.getElementById('authorize_button');
       const signoutButton = document.getElementById('signout_button');
+      const showFormButton = document.getElementById('show_form_button');
       const content = document.getElementById('content');
+      const eventForm = document.getElementById('eventForm');
 
       authorizeButton.onclick = handleAuthClick;
       signoutButton.onclick = handleSignoutClick;
+      showFormButton.onclick = () => {
+        eventForm.style.display = eventForm.style.display === 'none' ? 'block' : 'none';
+      };
+      document.getElementById('create_event_button').onclick = createEvent;
 
-      // Load GAPI client
       function gapiLoaded() {
         gapi.load('client', initializeGapiClient);
       }
@@ -44,7 +98,7 @@
       async function initializeGapiClient() {
         await gapi.client.init({
           apiKey: API_KEY,
-          discoveryDocs: [DISCOVERY_DOC]
+          discoveryDocs: [DISCOVERY_DOC],
         });
         gapiInited = true;
         maybeEnableButtons();
@@ -54,7 +108,7 @@
         tokenClient = google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
           scope: SCOPES,
-          callback: '', // set later
+          callback: '',
         });
         gisInited = true;
         maybeEnableButtons();
@@ -69,8 +123,9 @@
       function handleAuthClick() {
         tokenClient.callback = async (resp) => {
           if (resp.error) throw resp;
+          authorizeButton.style.visibility = 'hidden';
           signoutButton.style.visibility = 'visible';
-          authorizeButton.innerText = 'Refresh';
+          showFormButton.style.visibility = 'visible';
           await listUpcomingEvents();
         };
 
@@ -87,8 +142,10 @@
           google.accounts.oauth2.revoke(token.access_token);
           gapi.client.setToken('');
           content.innerText = '';
-          authorizeButton.innerText = 'Authorize';
+          authorizeButton.style.visibility = 'visible';
           signoutButton.style.visibility = 'hidden';
+          showFormButton.style.visibility = 'hidden';
+          eventForm.style.display = 'none';
         }
       }
 
@@ -96,7 +153,7 @@
         try {
           const response = await gapi.client.calendar.events.list({
             calendarId: 'primary',
-            timeMin: (new Date()).toISOString(),
+            timeMin: new Date().toISOString(),
             showDeleted: false,
             singleEvents: true,
             maxResults: 10,
@@ -109,12 +166,43 @@
             return;
           }
 
-          content.innerText = events.reduce(
-            (str, event) => `${str}${event.summary} (${event.start.dateTime || event.start.date})\n`,
-            'Events:\n'
-          );
+          content.innerText = 'Upcoming Events:\n' + events.map(
+            e => `• ${e.summary} (${e.start.dateTime || e.start.date})`
+          ).join('\n');
         } catch (err) {
           content.innerText = 'Error: ' + err.message;
+        }
+      }
+
+      async function createEvent() {
+        const title = document.getElementById('eventTitle').value;
+        const desc = document.getElementById('eventDesc').value;
+        const start = document.getElementById('eventStart').value;
+        const end = document.getElementById('eventEnd').value;
+
+        if (!title || !start || !end) {
+          alert('Please fill all required fields (Title, Start, End)');
+          return;
+        }
+
+        const event = {
+          summary: title,
+          description: desc,
+          start: { dateTime: new Date(start).toISOString(), timeZone: 'America/Toronto' },
+          end: { dateTime: new Date(end).toISOString(), timeZone: 'America/Toronto' },
+        };
+
+        try {
+          const response = await gapi.client.calendar.events.insert({
+            calendarId: 'primary',
+            resource: event,
+          });
+          alert('✅ Event created: ' + response.result.htmlLink);
+          listUpcomingEvents();
+          eventForm.reset();
+          eventForm.style.display = 'none';
+        } catch (err) {
+          alert('Error creating event: ' + err.message);
         }
       }
     </script>
