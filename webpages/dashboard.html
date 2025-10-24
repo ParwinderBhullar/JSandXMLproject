@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - Calendar Project</title>
+
+    <!-- Link to your external stylesheet -->
+    <link rel="stylesheet" href="../css/dashboard.css" />
+  </head>
+
+  <body>
+    <header>
+      <h1>My Calendar Dashboard</h1>
+      <button id="createevent-btn" class="btn">Create Event</button>
+      <button id="signout-btn" class="btn">Logout</button>
+    </header>
+
+    <main>
+      <section id="events" class="card">
+        <h2>Your Upcoming Events</h2>
+        <ul id="eventList">
+          <li>Loading your events...</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 Calendar Project</p>
+    </footer>
+
+    <!-- Google API -->
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <!-- App Scripts -->
+    <script src="../js/config.js"></script>
+    <script src="../js/dashboard.js"></script>
+  </body>
+</html>
